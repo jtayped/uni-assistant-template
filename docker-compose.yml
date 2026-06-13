@@ -1,0 +1,27 @@
+services:
+  uni-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - API_KEY=${API_KEY}
+      - REPO_PATH=/repo
+      - VAULT_PATH=/repo/vault
+      - INDEX_PATH=/data/index
+      - PORT=8000
+      - TIMEZONE=${TIMEZONE:-Europe/Madrid}
+    volumes:
+      - .:/repo
+      - uni-index:/data/index
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  uni-index:

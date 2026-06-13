@@ -1,0 +1,45 @@
+
+# Vault — your personal academic data (never commit)
+vault/*
+!vault/ingest/
+vault/ingest/*
+!vault/ingest/.gitkeep
+
+# Secrets
+.env
+*.env
+
+# Index (rebuilt automatically)
+.index/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# C/C++ build artifacts
+*.o
+*.a
+*.so
+
+# Java/Maven build output
+target/
+*.class
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# LanceDB index (rebuilt from files)
+*.lance/
