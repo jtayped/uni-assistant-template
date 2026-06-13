@@ -1,113 +1,95 @@
-# Uni Assistant V2
+# uni assistant
 
-Claude Code-powered academic assistant. Handles subjects, marks, exam history, study campaigns, notes, projects, and normative. Runs as an MCP server on a VPS — accessible from Claude Code on desktop and via Telegram on mobile.
+claude code-powered academic assistant. runs locally as an mcp server — handles subjects, marks, exam history, study campaigns, and notes.
 
-## Architecture
+## architecture
 
 ```
-GitHub (private) ─── source of truth for markdown + images
-VPS ────────────── MCP server + LanceDB index + Claude Code Channels (Telegram)
-Desktop ────────── Claude Code → MCP server (HTTPS + API key)
-Mobile ─────────── Telegram → VPS Claude Code → vault → git
+desktop:  claude code  →  docker (mcp server + lancedb)  →  vault/
 ```
 
-## Quick Start
+the mcp server runs in docker on your desktop. claude code connects to it over localhost. the vault is a directory of markdown files and pdfs — everything stays local.
 
-### VPS Deployment (with Coolify)
+## quick start
 
-1. Clone this repo on your VPS:
-   ```bash
-   git clone https://github.com/jtayped/uni-assistant ~/uni-assistant
-   cd ~/uni-assistant
-   ```
+### 1 — start the server
 
-2. Copy and fill the env file:
-   ```bash
-   cp .env.example .env
-   # Edit .env: set API_KEY to a random secret
-   ```
+```bash
+docker-compose up -d
+```
 
-3. In Coolify: create a **Docker Compose** service pointing to this directory. Set the environment variables from `.env`.
+first time, after populating the vault, rebuild the lancedb index:
 
-4. In Cloudflare: add an A record for your chosen subdomain (e.g. `uni.joeltaylor.business`) pointing to your VPS IP. Coolify handles SSL automatically.
+```bash
+docker-compose exec uni-mcp python /app/../scripts/build_index.py
+```
 
-5. Build the initial LanceDB index (after vault has content):
-   ```bash
-   docker-compose exec uni-mcp python /app/../scripts/build_index.py
-   ```
+### 2 — configure claude code
 
-### Desktop Setup
-
-Add to your Claude Code settings (`~/.claude/settings.json`):
+add to your claude code settings (`~/.claude/settings.json`):
 
 ```json
 {
   "mcpServers": {
     "uni-assistant": {
-      "type": "sse",
-      "url": "https://uni.joeltaylor.business/sse",
-      "headers": {
-        "X-API-Key": "your-api-key-here"
-      }
+      "type": "http",
+      "url": "http://localhost:8000/mcp"
     }
   }
 }
 ```
 
-### First Run — Init
+no api key needed — the server is bound to localhost only.
 
-Start a Claude Code session and say:
+### 3 — run init
 
-> "Run the uni assistant init. Let's set up my vault from scratch."
+open a claude code session in the repo root and say:
 
-The agent will guide you through adding your university, semester, subjects, and existing files.
+> "run the uni assistant init. let's set up my vault from scratch."
 
-See `INIT.md` for the full init procedure.
+the agent guides you through subjects, grade components, and file ingestion. see `init.md` for the full procedure.
 
-## Repository Structure
+## repository structure
 
 ```
 uni-assistant/
-├── server/          MCP server (Python, FastAPI, runs on VPS)
-├── vault/           Knowledge base (source of truth, synced via git)
-│   ├── CLAUDE.md    Agent instructions — loaded at every session
-│   ├── ingest/      Drop zone — dump files here for the agent to process
-│   ├── config/      Philosophy, active semester pointer, normative
-│   └── years/       All academic content organized by year/semester/subject
-├── scripts/         Maintenance scripts (build index, deploy)
+├── server/          mcp server (python, fastmcp)
+├── vault/           your academic knowledge base (gitignored)
+│   ├── CLAUDE.md    agent instructions — loaded at every session
+│   ├── ingest/      drop zone — dump files here for the agent to process
+│   ├── config/      philosophy, active semester pointer, normative
+│   └── years/       content organized by year/semester/subject
+├── scripts/         maintenance scripts (build index)
 ├── Dockerfile
 ├── docker-compose.yml
-├── PROJECT_PLAN.md  Full architecture documentation
-├── PROJECT_NEEDS.md What you need to provide to deploy
-└── INIT.md          First-time setup instructions
+├── init.md          first-time setup instructions
+└── setup.md         local installation steps
 ```
 
-## Technology Stack
+## technology stack
 
-| Component | Choice |
+| component | choice |
 |-----------|--------|
-| MCP server | Python + FastMCP |
-| Vector DB | LanceDB (embedded, no separate process) |
-| Embeddings | sentence-transformers `all-MiniLM-L6-v2` (local, free) |
-| PDF parsing | PyMuPDF |
-| PDF export | Pandoc |
-| HTTPS + SSL | Coolify + Let's Encrypt |
-| Auth | API key in request header |
-| Mobile | Claude Code Channels (Telegram) |
-| Sync | Git (GitHub private repo) |
+| mcp server | python + fastmcp |
+| transport | streamable http (localhost:8000) |
+| vector db | lancedb (embedded, no separate process) |
+| embeddings | sentence-transformers `all-MiniLM-L6-v2` (local, free) |
+| pdf parsing | pymupdf |
+| pdf export | pandoc |
+| runtime | docker compose |
 
-## Study Philosophy
+## study philosophy
 
-- **Target: 5 (pass)** — above 5 is wasted time better spent on failing subjects
-- **Exam-first** — study real past exams from day one, theory is reference only
-- **Shallow pass** — attempt all exercises before deepening any, nothing skipped
-- **Agent assists, never gatekeeps** — stuck on an exercise? Agent explains and helps through it
-- **User overrides always** — agent suggests, you decide. No pushback.
+- **target: 5 (pass)** — above 5 is wasted time better spent on failing subjects
+- **exam-first** — study real past exams from day one, theory is reference only
+- **shallow pass** — attempt all exercises before deepening any, nothing skipped
+- **agent assists, never gatekeeps** — stuck on an exercise? agent explains and helps through it
+- **user overrides always** — agent suggests, you decide. no pushback.
 
-## Non-Goals
+## non-goals
 
-- No group collaboration features
-- No calendar sync
-- No flashcard system
-- No automatic lecture transcription
-- No cloud-hosted LLM on mobile (Telegram goes through your VPS)
+- no group collaboration features
+- no calendar sync
+- no flashcard system
+- no automatic lecture transcription
+- no cloud sync or remote access
